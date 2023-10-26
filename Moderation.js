@@ -1,26 +1,37 @@
+const { qldbDriver } = require('./aws-config');
+
 const ms = require('ms');
+const aws = require('aws-sdk');
+require('dotenv').config();
+const { PooledQldbDriver } = require("amazon-qldb-driver-nodejs");
 const ModerationLogs = require('./Moderation_Logs');
-const EmbedBuilder = require('discord.js');  // Replace with the correct import statement for EmbedBuilder
+const { EmbedBuilder } = require('discord.js');  // Replace with the correct import statement for EmbedBuilder
+
 async function sendCommand(command) {
-    const result = await qldbClient.send(command);  // Now inside an async function
-    return result;
+  const session = await qldbDriver.getSession();
+  const result = await session.executeStatement(command);
+  session.close();
+  return result;
 }
 
 async function checkMuteStatus(memberId) {
-    const params = {
-        Statement: `SELECT UnmuteTime FROM Moderation_Logs WHERE MemberId = ? AND ActionType = 'mute' AND UnmuteTime > ?`,
-        Parameters: [
-            { IonText: memberId },
-            { IonInt: Date.now() }
-        ]
-    };
-    const result = await qldb.executeStatement(params).promise();
-    if (result.Records.length > 0) {
-        const unmuteTime = result.Records[0].UnmuteTime.IonInt;  // Adjust this line to match your schema
+    try {
+      const session = await qldbDriver.getSession();
+      const statement = `SELECT UnmuteTime FROM Moderation_Logs WHERE MemberId = ? AND ActionType = 'mute' AND UnmuteTime > ?`;
+      const parameters = [memberId, Date.now()];
+      const result = await session.executeStatement(statement, parameters);
+      session.close();
+    
+      if (result.getResultList().length > 0) {
+        const unmuteTime = result.getResultList()[0].UnmuteTime;  // Adjust this line to match your schema
         return unmuteTime - Date.now();
+      }
+    } catch (error) {
+      console.error("Error in checkMuteStatus:", error);
     }
+    
     return null;
-}
+  }  
 
 module.exports = {
     // Kick a member from the guild

@@ -1,3 +1,6 @@
+const { qldbDriver } = require('./aws-config');
+require('dotenv').config();
+
 const {
     Client,
     GatewayIntentBits,
@@ -79,4 +82,4 @@ client.on("messageCreate", async (message) => {
 });
 
 // Remember to log in with your token
-client.login("MTE2NTY3MDI0NjI2MzMwODM5Ng.GEWmhc.1_sKR5hCrt20aasOCoD7mfIdRnbR_DCwuDsINA");
+client.login(process.env.DISCORD_TOKEN);

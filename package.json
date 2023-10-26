@@ -1,7 +1,10 @@
 {
   "dependencies": {
     "@aws-sdk/client-qldb": "^3.435.0",
-    "aws-sdk": "^2.1480.0",
+    "@aws-sdk/node-http-handler": "^3.374.0",
+    "@aws-sdk/smithy-client": "^3.374.0",
+    "amazon-qldb-driver-nodejs": "^3.0.1",
+    "aws-sdk": "^2.1481.0",
     "discord.js": "^14.12.1",
     "dotenv": "^16.3.1",
     "ms": "^2.1.3"
