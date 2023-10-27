@@ -1,23 +1,29 @@
+let isConnected = false;
 require('dotenv').config();
 const { MongoClient } = require("mongodb");
-
-
 const {
     Client,
     GatewayIntentBits,
     Partials,
     Constants,
 } = require("discord.js");
-const { handleDM } = require("./dmHandler");
-const Moderation = require("./Moderation");
+const { handleDM } = require("./utils/dmHandler"); // Already updated to the new path
+const Moderation = require("./prefix_commands/Moderation"); // Already updated to the new path
 
 // Initialize MongoDB Connection
 const uri = process.env.MONGO_URI;
 const mongoClient = new MongoClient(uri);
 
 mongoClient.connect()
-    .then(() => console.log("Connected to MongoDB Atlas"))
-    .catch(err => console.error("Failed to connect to MongoDB Atlas:", err));
+    .then(async () => {
+        console.log("Connected to MongoDB Atlas");
+        isConnected = true;  // Update the state
+        await Moderation.init(mongoClient, isConnected);  // Initialize the Moderation module here
+    })
+    .catch(err => {
+        console.error("Failed to connect to MongoDB Atlas:", err);
+        isConnected = false;  // Update the state
+    });
 
 const client = new Client({
     intents: [
@@ -40,6 +46,7 @@ const client = new Client({
 });
 
 const prefix = "."; // Define your command prefix here
+console.log(Moderation);
 
 client.once("ready", () => {
     console.log("Bot is online!");
