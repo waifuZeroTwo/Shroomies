@@ -1,4 +1,6 @@
 require('dotenv').config();
+const { MongoClient } = require("mongodb");
+
 
 const {
     Client,
@@ -8,6 +10,14 @@ const {
 } = require("discord.js");
 const { handleDM } = require("./dmHandler");
 const Moderation = require("./Moderation");
+
+// Initialize MongoDB Connection
+const uri = process.env.MONGO_URI;
+const mongoClient = new MongoClient(uri);
+
+mongoClient.connect()
+    .then(() => console.log("Connected to MongoDB Atlas"))
+    .catch(err => console.error("Failed to connect to MongoDB Atlas:", err));
 
 const client = new Client({
     intents: [
@@ -35,7 +45,6 @@ client.once("ready", () => {
     console.log("Bot is online!");
 });
 
-// New event handler for messageCreate
 client.on("messageCreate", async (message) => {
     console.log(`Received message: ${message.content} from ${message.author.tag}`);
 

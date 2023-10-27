@@ -1,14 +1,17 @@
-const sql = require('mssql');
+const { MongoClient } = require("mongodb");
 
-const config = {
-    user: process.env.DB_USER,
-    password: process.env.DB_PASSWORD,
-    server: process.env.DB_HOST,
-    port: Number(process.env.DB_PORT),
-    database: process.env.DB_NAME
+const uri = process.env.MONGO_URI; // Replace with your MongoDB Atlas URI
+const mongoClient = new MongoClient(uri, { useUnifiedTopology: true });
+
+const connectToMongo = async () => {
+    try {
+        await mongoClient.connect();
+        console.log("Connected to MongoDB Atlas");
+    } catch (err) {
+        console.error("Failed to connect to MongoDB Atlas:", err);
+    }
 };
 
-const pool = new sql.ConnectionPool(config);
-const rdsClient = pool.connect();
+connectToMongo();
 
-module.exports = { rdsClient };
+module.exports = { mongoClient };

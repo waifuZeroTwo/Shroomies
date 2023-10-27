@@ -1,17 +1,30 @@
 require('dotenv').config();
-
-const config = {
-    user: process.env.DB_USER,
-    password: process.env.DB_PASSWORD,
-    server: process.env.DB_HOST,
-    port: Number(process.env.DB_PORT),
-    database: process.env.DB_NAME
-};
-
+const { MongoClient } = require("mongodb");
 const ms = require('ms');
+const { MessageEmbed, EmbedBuilder} = require('discord.js');  // Corrected the import statement for MessageEmbed
 const ModerationLogs = require('./Moderation_Logs');
-const { EmbedBuilder } = require('discord.js');  // Replace with the correct import statement for EmbedBuilder
 
+// Initialize MongoDB Connection
+const uri = process.env.MONGO_URI; // Replace with your MongoDB Atlas URI
+const mongoClient = new MongoClient(uri);
+
+mongoClient.connect()
+    .then(() => console.log("Connected to MongoDB Atlas"))
+    .catch(err => console.error("Failed to connect to MongoDB Atlas:", err));
+const logAction = async (action, member, reason, duration) => {
+    const db = mongoClient.db('Discord-Bot-DB'); // Replace with your database name
+    const collection = db.collection('moderation_logs'); // Replace with your collection name
+
+    const log = {
+        action,
+        memberID: member.id,
+        reason,
+        duration,
+        timestamp: new Date()
+    };
+
+    await collection.insertOne(log);
+};
 module.exports = {
     // Kick a member from the guild
 
@@ -37,6 +50,7 @@ module.exports = {
         }
 
         await member.kick(reason);
+        logAction('kick', member, reason); // Log the action
         message.channel.send(`${member} has been kicked for ${reason}`);
     },
     // Ban a member from the guild
@@ -60,6 +74,7 @@ module.exports = {
         }
 
         await member.ban({reason: reason});
+        logAction('ban', member, reason); // Log the action
         message.channel.send(`${member} has been banned for ${reason}`);
     },
     // Unban a previously banned member
@@ -74,6 +89,7 @@ module.exports = {
         }
 
         await message.guild.members.unban(userId, reason);
+        logAction('unban', { id: userId }, reason); // Log the action
         message.channel.send(`User with ID ${userId} has been unbanned for ${reason}`);
     },
 
@@ -85,7 +101,7 @@ module.exports = {
         const timeoutArg = args[2];
         const reason = args.slice(3).join(' ');
         const ms = require('ms');
-        const duration = ms(ms(timeoutArg), { long: true });  // Declare duration here
+        const duration = ms(ms(timeoutArg), {long: true});
 
         let member = message.mentions.members.first();
         if (!member) {
@@ -107,26 +123,17 @@ module.exports = {
             return;
         }
 
-        if (remainingMuteDuration !== null) {
-            const humanReadableRemainingDuration = ms(remainingMuteDuration, { long: true });
-            const muteEmbed = new EmbedBuilder()
-                .setTitle('Member Already Muted')
-                .setDescription(`${member} is already muted.`)
-                .setFooter({ text: `${member} was muted for ${reason} and will be unmuted in ${humanReadableRemainingDuration}` })
-                .setColor('#FF0000')
-                .setTimestamp();
-            message.channel.send({ embeds: [muteEmbed] });
-            return;
-        }
+        // Correctly calculate the mute end time and log the mute action
+        const muteEndTime = Date.now() + ms(timeoutArg);
+        await ModerationLogs.logMute(member.id, muteEndTime, reason);
 
         await member.roles.add(role, reason);
 
-// Log the mute action
-        ModerationLogs.logAction('mute', member, reason, duration);
+        // Remove the call to ModerationLogs.logAction('mute', member, reason, duration);
 
         const muteEmbed = new EmbedBuilder()
             .setTitle('Member Muted')
-            .setDescription(`${member} has been muted for ${reason} and will be unmuted in ${duration}`)  // Use duration here
+            .setDescription(`${member} has been muted for ${reason} and will be unmuted in ${duration}`)
             .setColor('#FF0000')
             .setTimestamp();
         message.channel.send({ embeds: [muteEmbed] });

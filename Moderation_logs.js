@@ -1,40 +1,42 @@
-// File: Moderation_Logs.js
-const { qldbClient } = require('./aws-config');
+const { MongoClient } = require("mongodb");
+const uri = process.env.MONGO_URI; // Replace with your MongoDB Atlas URI
+
+const mongoClient = new MongoClient(uri);
+let db;
+
+// Initialize MongoDB Connection
+mongoClient.connect()
+    .then(client => {
+        db = client.db('Discord-Bot-DB'); // Replace with your database name
+        console.log("Connected to MongoDB Atlas for Moderation Logs");
+    })
+    .catch(err => console.error("Failed to connect to MongoDB Atlas:", err));
+
 module.exports = {
     logMute: async function(memberId, muteEndTime, reason) {
-        const params = {
-            // Adjusted for your database and table names
-            Statement: `
-                INSERT INTO Discord-Bot-DB.Moderation_Logs 
-                (memberId, actionType, actionTimestamp, duration, reason) 
-                VALUES (?, 'mute', ?, ?, ?)
-            `,
-            Parameters: [
-                { IonText: memberId },
-                { IonTimestamp: new Date().toISOString() },
-                { IonInt: (muteEndTime - Date.now()) / 1000 },  // Store duration in seconds
-                { IonText: reason }
-            ]
+        const collection = db.collection('moderation_logs'); // Replace with your collection name
+        const log = {
+            memberId,
+            actionType: 'mute',
+            actionTimestamp: new Date(),
+            duration: (muteEndTime - Date.now()) / 1000,
+            reason
         };
-        await qldb.executeStatement(params);
+        await collection.insertOne(log);
     },
 
     getRemainingMuteTime: async function(memberId) {
-        const params = {
-            // Adjusted for your database and table names
-            Statement: `
-                SELECT * FROM Discord-Bot-DB.Moderation_Logs 
-                WHERE memberId = ? AND actionType = 'mute' 
-                ORDER BY actionTimestamp DESC LIMIT 1
-            `,
-            Parameters: [{ IonText: memberId }]
-        };
-        const result = await qldb.executeStatement(params);
-        if (result.Records.length > 0) {
-            const record = result.Records[0];
-            const muteEndTime = new Date(record.actionTimestamp.IonTimestamp).getTime() + (record.duration.IonInt * 1000);
+        const collection = db.collection('moderation_logs'); // Replace with your collection name
+        const result = await collection.find({
+            memberId,
+            actionType: 'mute'
+        }).sort({ actionTimestamp: -1 }).limit(1).toArray();
+
+        if (result.length > 0) {
+            const record = result[0];
+            const muteEndTime = record.actionTimestamp.getTime() + (record.duration * 1000);
             return muteEndTime - Date.now();
         }
-        return null;  // No mute record found
+        return null; // No mute record found
     }
 };
