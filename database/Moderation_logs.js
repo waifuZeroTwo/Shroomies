@@ -56,6 +56,13 @@ module.exports = {
         return result.length > 0;
     },
     logBan: async function(memberId, banEndTime, reason) {
+        // Check if the database is initialized
+        if (!db) {
+            console.error('Database is not initialized');
+            return;
+        }
+
+        // Define the collection and log variables
         const collection = db.collection('moderation_logs'); // Replace with your collection name
         const log = {
             memberId,
@@ -64,7 +71,14 @@ module.exports = {
             duration: (banEndTime - Date.now()) / 1000,
             reason
         };
-        await collection.insertOne(log);
+
+        // Insert the log into the database
+        try {
+            await collection.insertOne(log);
+            console.log('Successfully logged ban.');
+        } catch (err) {
+            console.error('Failed to log ban:', err);
+        }
     },
     removeBan: async function(memberId) {
         const collection = db.collection('moderation_logs'); // Replace with your collection name
@@ -87,5 +101,4 @@ module.exports = {
         }
         return null; // No ban record found
     },
-
 };

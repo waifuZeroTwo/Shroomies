@@ -66,33 +66,10 @@ module.exports = {
         try {
             const args = message.content.split(' ');
             const memberId = args[1];
-            const timeoutArg = args[2];  // Could be either a timeout or a reason
+            const timeoutArg = args[2]; // Could be either a timeout or a reason
             const reasonArg = args.slice(3).join(' ');
-            let reason;
-            let durationInMs;  // Will hold the duration in milliseconds
-            let duration;  // Will hold the duration in a human-readable format
 
-// Check if timeoutArg is a time duration or part of the reason
-            if (ms(timeoutArg)) {  // If timeoutArg can be parsed to time
-                durationInMs = ms(timeoutArg);
-                duration = msToHumanReadable(durationInMs); // Use the new function here
-                reason = reasonArg || 'No reason provided';
-            } else {
-                durationInMs = ms('10d');
-                duration = msToHumanReadable(durationInMs); // Use the new function here
-                reason = [timeoutArg, reasonArg].join(' ').trim();
-            }
-
-            if (!reason) {
-                const noReasonEmbed = new EmbedBuilder()
-                    .setTitle('No Reason Provided')
-                    .setDescription(`You must provide a reason to ban a member.`)
-                    .setColor('#FF0000')
-                    .setTimestamp();
-                message.channel.send({ embeds: [noReasonEmbed] });
-                return;
-            }
-
+            // Fetch member first
             let member = message.mentions.members.first();
             if (!member) {
                 try {
@@ -102,10 +79,24 @@ module.exports = {
                     return;
                 }
             }
-
             if (!member) {
                 message.channel.send('Invalid arguments. Usage: .ban <member/ID> [duration] [reason]');
                 return;
+            }
+
+// Initialize your variables
+            let reason;
+            let durationInMs = ms('10d'); // default value
+            let duration = msToHumanReadable(durationInMs); // Initialize duration here
+            let banEndTime = Date.now() + durationInMs; // default value
+
+            if (ms(timeoutArg)) {
+                durationInMs = ms(timeoutArg);
+                duration = msToHumanReadable(durationInMs); // Initialize duration here
+                banEndTime = Date.now() + durationInMs;
+                reason = reasonArg || 'No reason provided';
+            } else {
+                reason = [timeoutArg, reasonArg].join(' ').trim();
             }
 
             // First, check if the user is already banned
@@ -131,8 +122,10 @@ module.exports = {
             }
 
             // If not already banned, then proceed with the ban
-            const banEndTime = Date.now() + ms(timeoutArg);
+            console.log('Debug:', member.id, banEndTime, reason);
+            console.log('Type Debug:', typeof banEndTime, typeof durationInMs);
             await ModerationLogs.logBan(member.id, banEndTime, reason);
+
 
             const banEmbed = new EmbedBuilder()
                 .setTitle('Member Banned')
