@@ -9,6 +9,7 @@ const {
 } = require("discord.js");
 const { handleDM } = require("./utils/dmHandler"); // Already updated to the new path
 const Moderation = require("./prefix_commands/Moderation"); // Already updated to the new path
+const Purge = require('./prefix_commands/purge');
 
 // Initialize MongoDB Connection
 const uri = process.env.MONGO_URI;
@@ -52,8 +53,11 @@ client.once("ready", () => {
     console.log("Bot is online!");
 });
 
-client.on("messageCreate", async (message) => {
-    console.log(`Received message: ${message.content} from ${message.author.tag}`);
+client.on('messageCreate', async (message) => {
+    if (!message.content.startsWith(prefix) || message.author.bot) return;
+
+    const args = message.content.slice(prefix.length).trim().split(/ +/g);
+    const command = args.shift().toLowerCase();
 
     if (message.author.bot) return;
 
@@ -66,8 +70,6 @@ client.on("messageCreate", async (message) => {
     }
 
     if (!message.content.startsWith(prefix)) return;
-
-    const command = message.content.slice(prefix.length).trim().split(" ")[0];
 
     console.log('Parsed command:', command);
     switch (command) {
@@ -85,6 +87,9 @@ client.on("messageCreate", async (message) => {
             break;
         case "unmute":
             await Moderation.unmute(message);
+            break;
+        case 'purge':
+            await Purge.purge(message, args);
             break;
     }
 });
