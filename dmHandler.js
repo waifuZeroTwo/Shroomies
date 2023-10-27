@@ -1,5 +1,4 @@
 const { EmbedBuilder } = require('discord.js');
-const { qldbClient } = require('./aws-config');
 
 module.exports.handleDM = async function(message, client) {
     try {

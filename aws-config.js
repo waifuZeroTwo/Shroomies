@@ -1,6 +1,14 @@
-const { PooledQldbDriver } = require("amazon-qldb-driver-nodejs");
+const sql = require('mssql');
 
-// Replace "YourQLDBLedgerName" with the name of your ledger.
-const qldbDriver = new PooledQldbDriver("Discord-Bot-DB");
+const config = {
+    user: process.env.DB_USER,
+    password: process.env.DB_PASSWORD,
+    server: process.env.DB_HOST,
+    port: Number(process.env.DB_PORT),
+    database: process.env.DB_NAME
+};
 
-module.exports = { qldbDriver };
+const pool = new sql.ConnectionPool(config);
+const rdsClient = pool.connect();
+
+module.exports = { rdsClient };
