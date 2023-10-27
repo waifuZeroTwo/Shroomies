@@ -117,6 +117,26 @@ module.exports = {
             return;
         }
 
+        // Check if the member is already muted
+        const remainingMuteDuration = await ModerationLogs.getRemainingMuteTime(member.id);
+        console.log('Remaining Mute Duration:', remainingMuteDuration);  // Debug log
+
+        if (remainingMuteDuration !== null) {
+            if (remainingMuteDuration <= 0) {
+                // Mute has expired but record still exists, you might want to remove the record or handle it appropriately
+            } else {
+                const humanReadableRemainingDuration = ms(remainingMuteDuration, { long: true });
+                const muteEmbed = new EmbedBuilder()
+                    .setTitle('Member Already Muted')
+                    .setDescription(`Kindly note, ${member} is already muted.`)
+                    .setFooter({ text: `The mute will remain in effect for ${humanReadableRemainingDuration}` })
+                    .setColor('#FF0000')
+                    .setTimestamp();
+                message.channel.send({ embeds: [muteEmbed] });
+                return;
+            }
+        }
+
         const role = message.guild.roles.cache.find(role => role.name === "Muted");
         if (!role) {
             message.channel.send('Mute role not found. Please create a role named "Muted".');
