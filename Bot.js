@@ -4,21 +4,24 @@ const {
     Client,
     GatewayIntentBits,
     Partials,
+    Constants,
 } = require("discord.js");
 const { handleDM } = require("./utils/dmHandler");
 const Moderation = require("./prefix_commands/Moderation");
 const Purge = require('./prefix_commands/purge');
 const BanMuteCheck = require('./prefix_commands/ban_mute_check');
-const { connectToMongo } = require('./database/dbConnection');
+const { MongoClient } = require("mongodb");
+
+const uri = process.env.MONGO_URI;
+const mongoClient = new MongoClient(uri);
 
 let db;
 
 // Initialize MongoDB Connection
-connectToMongo()
-    .then((database) => {
-        db = database;
+mongoClient.connect()
+    .then(() => {
+        db = mongoClient.db('Discord-Bot-DB');
         console.log('Successfully connected to MongoDB Atlas.');
-        // Initialize the bot here
         initializeBot();
     })
     .catch((err) => {
@@ -46,18 +49,14 @@ function initializeBot() {
         ],
     });
 
-    const prefix = "."; // Define your command prefix here
-    console.log(Moderation);
+    const prefix = ".";
 
     client.once("ready", () => {
         console.log("Bot is online!");
     });
 
-    client.on('messageCreate', async (message) => {
-        if (!message.content.startsWith(prefix) || message.author.bot) return;
-
-        const args = message.content.slice(prefix.length).trim().split(/ +/g);
-        const command = args.shift().toLowerCase();
+    client.on("messageCreate", async (message) => {
+        console.log(`Received message: ${message.content} from ${message.author.tag}`);
 
         if (message.author.bot) return;
 
@@ -70,6 +69,9 @@ function initializeBot() {
         }
 
         if (!message.content.startsWith(prefix)) return;
+
+        const args = message.content.slice(prefix.length).trim().split(/ +/g);
+        const command = args.shift().toLowerCase();
 
         console.log('Parsed command:', command);
         switch (command) {

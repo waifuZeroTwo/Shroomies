@@ -1,17 +1,9 @@
-const { MessageEmbed } = require('discord.js');
-const mongoClient = require('../database/mongoClient'); // Replace with your MongoDB client
-
-// Function to log ticket information to MongoDB
-const logTicket = async (ticketInfo) => {
-    const db = mongoClient.db('Discord-Bot-DB'); // Replace with your database name
-    const collection = db.collection('tickets'); // Replace with your collection name
-    await collection.insertOne(ticketInfo);
-};
+const { EmbedBuilder } = require('discord.js');
 
 module.exports.handleDM = async function(message, client) {
     try {
-        if (message.channel.type === 'dm') {
-            const embed = new MessageEmbed()
+        if (message.channel.type === 1) {
+            const embed = new EmbedBuilder()
                 .setColor('#0099ff')
                 .setTitle('Ticket Confirmation')
                 .setDescription('Do you want to confirm the ticket?')
@@ -32,32 +24,14 @@ module.exports.handleDM = async function(message, client) {
                 if (reaction.emoji.name === '✅') {
                     await message.channel.send('Ticket confirmed.');
 
-                    // Log ticket to database
-                    const ticketInfo = {
-                        userID: message.author.id,
-                        content: message.content,
-                        timestamp: new Date(),
-                        // Add more fields as needed
-                    };
-                    await logTicket(ticketInfo);
-
-                    // Create new channel and send embedded message
                     const guild = client.guilds.cache.get('1165456303209054208');
                     if (guild) {
-                        const db = mongoClient.db('Discord-Bot-DB');
-                        const ticketNumber = await db.collection('tickets').countDocuments({});
-                        const channel = await guild.channels.create(`Ticket#${ticketNumber + 1}`, {
+                        guild.channels.create('new-channel', {
                             type: 'GUILD_TEXT',
-                        });
-
-                        const embed = new MessageEmbed()
-                            .setColor('#0099ff')
-                            .setTitle(`Ticket#${ticketNumber + 1}`)
-                            .setDescription(`User ID: ${message.author.id}\nContent: ${message.content}`)
-                            .setThumbnail(message.author.displayAvatarURL())
-                            .setTimestamp();
-
-                        await channel.send({ embeds: [embed] });
+                            name: 'test'
+                        }).then(channel => {
+                            console.log(`Created new channel ${channel.name}`);
+                        })
                     } else {
                         console.log("Guild not found.");
                     }
