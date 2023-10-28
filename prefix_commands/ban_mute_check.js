@@ -1,7 +1,11 @@
 const { msToHumanReadable } = require('../utils/timeUtils');
-const { EmbedBuilder } = require('discord.js'); // Changed from EmbedBuilder to MessageEmbed
-
+const { EmbedBuilder, GatewayIntentBits, PermissionFlagsBits } = require('discord.js');
 async function checkMuteOrBan(message, args, action, db) {
+    // Check if the member has the 'MANAGE_MESSAGES' permission
+    const member = message.guild.members.cache.get(message.author.id);
+    if (!message.member.permissions.has(PermissionFlagsBits.ManageMessages)) {
+        return message.reply("You don't have permission to check ban or mute durations of people");
+    }
     const memberId = args[0];
 
     if (!memberId) {
@@ -10,7 +14,18 @@ async function checkMuteOrBan(message, args, action, db) {
 
     const collection = db.collection('moderation_logs');
     console.log(`Searching for record with memberId = ${memberId} and actionType = ${action}`);
-    const doc = await collection.findOne({ memberId: memberId, actionType: action });
+
+    let doc;
+    if (action === 'mute') {
+        const docs = await collection.find({ memberId: memberId, actionType: action })
+            .sort({ actionTimestamp: -1 })
+            .limit(1)
+            .toArray();
+        doc = docs[0];  // Take the most recent document
+    } else {
+        doc = await collection.findOne({ memberId: memberId, actionType: action });
+    }
+
     console.log("Query result:", doc);
 
     if (!doc) {
@@ -18,19 +33,9 @@ async function checkMuteOrBan(message, args, action, db) {
     }
 
     const currentTime = new Date().getTime();
-    console.log("Current Time (ms):", currentTime);
+    const actionTimestamp = new Date(doc.actionTimestamp).getTime();
+    const remainingTime = (actionTimestamp + doc.duration * 1000) - currentTime;  // Updated this line
 
-    const actionTimestamp = new Date(doc.actionTimestamp).getTime(); // convert to timestamp (ms)
-    console.log("Action Timestamp (ms):", actionTimestamp);
-
-    const durationInMilliseconds = doc.duration * 1000; // if your duration is actually in seconds, convert it to milliseconds
-    console.log("Duration (ms):", durationInMilliseconds);
-
-    const endOfAction = actionTimestamp + durationInMilliseconds;
-    console.log("End of Action (ms):", endOfAction);
-
-    const remainingTime = endOfAction - currentTime;
-    console.log("Remaining Time (ms):", remainingTime);
 
     if (isNaN(remainingTime)) {
         return message.reply(`The duration for this ${action} is not set.`);
@@ -42,8 +47,7 @@ async function checkMuteOrBan(message, args, action, db) {
 
     const remainingTimeString = msToHumanReadable(remainingTime);
 
-    // Create an embedded message using MessageEmbed
-    const embed = new EmbedBuilder() // Changed from EmbedBuilder to MessageEmbed
+    const embed = new EmbedBuilder()
         .setTitle(`Check ${action}`)
         .setDescription(`Time remaining for ${action}: ${remainingTimeString}`)
         .setColor('#0099ff')

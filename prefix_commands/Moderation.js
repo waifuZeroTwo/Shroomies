@@ -1,5 +1,5 @@
 const ms = require('ms');
-const { EmbedBuilder } = require('discord.js'); // Note: EmbedBuilder seems to be specific to your codebase, replace as needed
+const { EmbedBuilder,PermissionFlagsBits } = require('discord.js'); // Note: EmbedBuilder seems to be specific to your codebase, replace as needed
 const ModerationLogs = require('../database/Moderation_logs'); // Adjust the path according to your directory structure
 const { msToHumanReadable } = require('../utils/timeUtils'); // Adjust the path according to your directory structure
 
@@ -37,6 +37,9 @@ module.exports = {
     // Kick a member from the guild
 
     kick: async function (message) {
+        if (!message.member.permissions.has(PermissionFlagsBits.KickMembers)) {
+            return message.reply("I'm sorry, you don't have the required permissions to kick members.");
+        }
         console.log('Module is being loaded');
         const args = message.content.split(' ');
         const memberId = args[1];  // Can be either a mention or a user ID
@@ -63,6 +66,9 @@ module.exports = {
     },
 
     ban: async function (message) {
+        if (!message.member.permissions.has(PermissionFlagsBits.BanMembers)) {
+            return message.reply("I'm sorry, you don't have the required permissions to ban members.");
+        }
         try {
             const args = message.content.split(' ');
             const memberId = args[1];
@@ -166,6 +172,9 @@ module.exports = {
 
     // Unban a previously banned member
     unban: async function (message) {
+        if (!message.member.permissions.has(PermissionFlagsBits.BanMembers)) {
+            return message.reply("I'm sorry, you don't have the required permissions to unban members.");
+        }
         const args = message.content.split(' ');
         const userId = args[1];
         const reason = args.slice(2).join(' ');
@@ -222,6 +231,9 @@ module.exports = {
         });
     },
     mute: async function(message) {
+        if (!message.member.permissions.has(PermissionFlagsBits.ManageRoles)) {
+            return message.reply("I'm sorry, you don't have the required permissions to mute members.");
+        }
         const args = message.content.split(' ');
         const memberId = args[1];
         const timeoutArg = args[2];
@@ -314,6 +326,9 @@ module.exports = {
 
     // Unmute a member in the channel
     unmute: async function(message) {
+        if (!message.member.permissions.has(PermissionFlagsBits.ManageRoles)) {
+            return message.reply("I'm sorry, you don't have the required permissions to unmute members.");
+        }
         const args = message.content.split(' ');
         const memberId = args[1];
         const reason = args.slice(2).join(' ');
