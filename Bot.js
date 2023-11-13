@@ -15,6 +15,7 @@ const { EmbedBuilder } = require('discord.js');
 const uri = process.env.MONGO_URI;
 const mongoClient = new MongoClient(uri);
 const { openTickets } = require('./utils/common.js');
+const Ticket = require('./utils/Tickets');
 
 let db;
 
@@ -136,6 +137,22 @@ function initializeBot() {
             case 'checkban':
                 await BanMuteCheck.checkMuteOrBan(message, args, 'ban', db);
                 break;
+        }
+    });
+    // Add the new event handler for channel deletion here:
+    client.on('channelDelete', async (channel) => {
+        try {
+            const ticket = await Ticket.findOne({ channelId: channel.id, status: 'open' }).populate('user');
+            if (ticket) {
+                ticket.status = 'closed';
+                ticket.updatedAt = new Date();
+                await ticket.save();
+
+                // Optionally, remove the reference to the user
+                 await User.findByIdAndDelete(ticket.user._id);
+            }
+        } catch (err) {
+            console.error('Error handling channel deletion:', err);
         }
     });
 async function closeTicket(message, args) {

@@ -1,6 +1,9 @@
 const { EmbedBuilder } = require('discord.js');
 const { openTickets } = require('./common.js');
-const { PermissionsBitField } = require('discord.js');
+const { PermissionsBitField, DiscordAPIError } = require('discord.js');
+const { connectToMongo } = require('../database/dbConnection.js');
+const Ticket = require('./Tickets');
+const TicketLogs = require('../database/Ticket_logs.js');  // Update the path to the location of Ticket_logs.js
 
 module.exports.handleDM = async function(message, client) {
     try {
@@ -61,8 +64,9 @@ module.exports.handleDM = async function(message, client) {
                     return;
                 }
 
-                const collector = sentEmbed.createReactionCollector({filter, time: 60000});
                 const lastTicketClosure = {};
+                const collector = sentEmbed.createReactionCollector({filter, time: 60000});
+
                 collector.on('collect', async (reaction, user) => {
                     if (reaction.emoji.name === '✅') {
 
@@ -124,7 +128,18 @@ module.exports.handleDM = async function(message, client) {
                                 await newChannel.setTopic(`User ID: ${message.author.id}`);
                                 console.log(`Created new channel ${newChannel.name}`);
 
-                                // Move this line here, after newChannel is defined
+                                const newTicket = new Ticket({
+                                    userId: message.author.id,
+                                    channelId: newChannel.id,
+                                    status: 'open',
+                                    createdAt: new Date(),
+                                    updatedAt: new Date(),
+                                });
+                                await newTicket.save();
+
+                                // Log ticket creation to Ticket_logs
+                                await TicketLogs.logTicketCreate(message.author.id, newChannel.id, 'Ticket opened');  // This line is added
+
                                 openTickets.set(message.author.id, newChannel);
 
                                 // Send the original message to the new channel
@@ -136,7 +151,7 @@ module.exports.handleDM = async function(message, client) {
                                     .setDescription(`**User Message:**\n${message.content}`)
                                     .setTimestamp();
 
-// Check if the message has any attachments
+                                // Check if the message has any attachments
                                 if (message.attachments.size > 0) {
                                     // Get the URL of the first attachment
                                     const attachmentURL = message.attachments.first().url;
@@ -144,9 +159,29 @@ module.exports.handleDM = async function(message, client) {
                                     userEmbed.setImage(attachmentURL);
                                 }
 
+                                // Send the embed to the new channel
+                                try {
+                                    await newChannel.send({embeds: [userEmbed]});
+                                } catch (error) {
+                                    if (error instanceof DiscordAPIError && error.code === 10003) {
+                                        // The channel was not found, likely because it was deleted
+                                        const errorEmbed = new EmbedBuilder()
+                                            .setColor('#0099ff')
+                                            .setTitle('Ticket Closed')
+                                            .setDescription('The ticket has been closed. Try reopening a ticket.')
+                                            .setTimestamp();
 
-// Send the embed to the new channel
-                                newChannel.send({embeds: [userEmbed]}).catch(console.error);
+                                        // Send the embed to the user's DMs
+                                        try {
+                                            await message.author.send({embeds: [errorEmbed]});
+                                        } catch (dmError) {
+                                            console.error('Failed to send DM:', dmError);
+                                        }
+                                    } else {
+                                        // Some other error occurred
+                                        console.error('Failed to send message to channel:', error);
+                                    }
+                                }
 
                                 console.log("Original Message:", message.content);
 
@@ -164,11 +199,17 @@ module.exports.handleDM = async function(message, client) {
 
                     collector.stop();
                 });
+                client.on('error', (error) => {
+                    console.error('Global Client Error:', error);
+                });
+
 
                 collector.on('end', collected => {
                     // No need to remove reactions in DMs
                 });
-            } catch (error) {}
+            } catch (error) {
+                console.log(`An error occurred: ${error}`);
+            }
         }
     } catch (error) {
         console.log(`An error occurred: ${error}`);
